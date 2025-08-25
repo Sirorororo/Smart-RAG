@@ -2,11 +2,11 @@ import re
 import json
 import io
 import base64
+import os
 from PIL import Image
 from openai import OpenAI
 import logging
 from app.config import settings
-
 
 logger = logging.getLogger(__name__)
 
@@ -15,13 +15,10 @@ def get_figure_description_from_openai(image_bytes: bytes) -> str:
     Sends image bytes to the OpenAI GPT-4V (Vision) model and returns a description.
     """
     try:
-        # Convert image to base64
         base64_image = base64.b64encode(image_bytes).decode('utf-8')
-
-        client = OpenAI(api_key=settings.OPENAI_API_KEY) # API key is read from OPENAI_API_KEY environment variable
-        # Send request to GPT-4V
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # GPT-4V model
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "user",
@@ -33,19 +30,14 @@ def get_figure_description_from_openai(image_bytes: bytes) -> str:
             ],
             max_tokens=200
         )
-
-        # Extract text from response
         return response.choices[0].message.content.strip()
-
     except Exception as e:
         logger.error(f"Error calling OpenAI API: {e}", exc_info=True)
         return "Description could not be generated."
 
-
-def process_figures(content_dt: str, content_md: str, page_image_bytes: bytes, page_num: int) -> tuple[str, str]:
+def process_figures(content_dt: str, content_md: str, page_image_bytes: bytes, page_num: int, images_dir: str) -> tuple[str, str]:
     """
-    Finds figures in a document, extracts them as images, gets a description from an AI model,
-    and then updates the document with the new description.
+    Finds figures in a document, extracts them, gets a description, saves them, and updates the document.
     """
     figure_matches_dt = list(re.finditer(r"(<figure>.*?</figure>)", content_dt, re.DOTALL))
     image_matches_md = list(re.finditer(r"<!-- image -->", content_md))
@@ -55,12 +47,10 @@ def process_figures(content_dt: str, content_md: str, page_image_bytes: bytes, p
         return content_dt, content_md
 
     if not figure_matches_dt:
-        logger.info("No figures found in content")
         return content_dt, content_md
 
-    logger.info(f"Found {len(figure_matches_dt)} figures to process")
+    logger.info(f"Found {len(figure_matches_dt)} figures to process on page {page_num}")
 
-    # Load the page image once
     page_image = Image.open(io.BytesIO(page_image_bytes))
     page_width, page_height = page_image.size
 
@@ -70,8 +60,9 @@ def process_figures(content_dt: str, content_md: str, page_image_bytes: bytes, p
 
         loc_numbers = re.findall(r"<loc_(\d+)>", full_figure_block)
         if len(loc_numbers) != 4:
-            logger.warning(f"Skipping figure block, as it does not contain 4 location tags: {full_figure_block}")
+            logger.warning(f"Skipping figure, not 4 loc tags: {full_figure_block}")
             continue
+        
         coords = [int(n) / 100.0 for n in loc_numbers]
         x1, y1, x2, y2 = coords
 
@@ -87,6 +78,11 @@ def process_figures(content_dt: str, content_md: str, page_image_bytes: bytes, p
         try:
             description_text = get_figure_description_from_openai(cropped_image_bytes)
             unique_id = f"pg_{page_num}_fig_{figure_index + 1}"
+
+            # Save the image
+            image_path = os.path.join(images_dir, f"{unique_id}.png")
+            cropped_image.save(image_path, "PNG")
+            logger.info(f"✓ Saved figure image to {image_path}")
 
             figcaption = f"<figcaption>[figure: {unique_id}]{description_text}</figcaption>"
             new_figure_block = full_figure_block.replace("</figure>", f"{figcaption}</figure>", 1)

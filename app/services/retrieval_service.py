@@ -22,7 +22,7 @@ class RetrievalService:
             search_results = self.qdrant_client.search(
                 collection_name=collection_name,
                 query_vector=query_embedding,
-                limit=5  # Return top 5 results
+                limit=10
             )
 
             # 3. Format the context
@@ -30,46 +30,88 @@ class RetrievalService:
                 hit.payload['content'] for hit in search_results
             ])
 
+            # print(context)
             # 4. Prepare the prompt for the LLM
-            prompt = f"""
-            You are a knowledgeable and helpful AI assistant. 
-            Use the provided context to answer the user’s query as accurately and concisely as possible. 
+            sys_prompt = f"""
+            You are a helpful AI assistant. Your task is to answer the user's query based *STRICTLY AND EXCLUSIVELY* on the provided context below.
 
-            Instructions:
-            1. Only use information from the given context. If the answer is not present, explicitly say: "I don't know based on the provided context."
-            2. If the user requests to display an image and the context contains that image, return the corresponding figure ID in the format: [figure: figure_id].
-            3. If the user requests to show a table and the context contains that table, render it in **Markdown table format**.
-            4. Do not fabricate information or make assumptions beyond the given context.
-            5. Keep your response clear, structured, and user-friendly.
+            **CRITICAL RULES - VIOLATION WILL RESULT IN INCORRECT OUTPUT:**
 
-            Context:
+            1. **FIGURE REFERENCES - ZERO TOLERANCE FOR HALLUCINATION:**
+            - You may ONLY reference figures using IDs that appear EXACTLY as `<!-- figure: pg_X_fig_Y -->` in the context
+            - **MANDATORY:** Before outputting any figure reference, you MUST verify that the figure's description or content is relevant to your answer
+            - **Input Format in Context:** `<!-- figure: pg_X_fig_Y -->`
+            - **Output Format in Answer:** `[Fig: pg_X_fig_Y]`
+            - **PROCESS:** 1) Find `<!-- figure: pg_X_fig_Y -->` tag → 2) Read the preceding description in encapsulated in ![...] → 3) Verify relevance → 4) Only then reference if appropriate
+            - **FORBIDDEN:** Referencing figures without understanding their content or relevance
+            - **IF NO FIGURE TAGS EXIST IN CONTEXT:** Do not reference any figures at all
+
+            2. **STRICT CONTEXT ADHERENCE:**
+            - Answer ONLY based on information explicitly stated in the context
+            - Do not add external knowledge, assumptions, or inferences
+            - If information is not in the context, state: "This information is not available in the provided context."
+
+            3. **FIGURE REFERENCE VALIDATION CHECKLIST:**
+            Before using ANY figure reference, verify ALL of these:
+            - [ ] Does `<!-- figure: pg_X_fig_Y -->` appear in the context?
+            - [ ] Have I read the text/description around this figure tag?
+            - [ ] Is this figure's content relevant to answering the user's query?
+            - [ ] Am I copying the pg_X_fig_Y part exactly as written?
+            - [ ] Am I using the correct output format `[Fig: pg_X_fig_Y]`?
+            
+            **If you cannot check ALL five boxes, DO NOT include the figure reference.**
+
+            4. **TABLE HANDLING:**
+            - If context contains tabular data, render it in proper Markdown table format
+            - Only include tables that are explicitly present in the context
+
+            **EXAMPLE OF CORRECT BEHAVIOR:**
+            - Context: "The network topology shows three layers. <!-- figure: pg_1_fig_1 --> This diagram illustrates the hierarchical structure."
+            - Query: "What does the network topology look like?"
+            - Correct Process: 1) Find tag → 2) Read description ("three layers", "hierarchical structure") → 3) Verify relevance (matches query) → 4) Reference
+            - Correct Answer: "The network topology shows three layers with a hierarchical structure [Fig: pg_1_fig_1]"
+            - WRONG: Referencing [Fig: pg_1_fig_1] for a query about "database performance" when the figure is about network topology
+
+            **REMEMBER:** Your accuracy depends on following these rules precisely. When in doubt, omit figure references rather than guess.
+
+            ---
+            **Context:**
             {context}
-
-            User Query:
-            {query}
-
-            Answer:
+            ---
             """
 
+            prompt = f"""
+            **User Query:**
+            {query}
+
+            **Instructions Reminder:**
+            - Answer based ONLY on the provided context above
+            - Use figure references ONLY if they exist as `<!-- figure: pg_X_fig_Y -->` in the context
+            - **CRITICAL:** Read and understand the figure's description/context before referencing it
+            - Only reference figures that are relevant to answering the user's specific query
+            - Transform figure references from `<!-- figure: pg_X_fig_Y -->` to `[Fig: pg_X_fig_Y]`
+            - Copy the pg_X_fig_Y part EXACTLY as it appears
+            - If uncertain about any information, state that it's not available in the context
+
+            **Answer:**
+            """
 
             # 5. Send context and query to LLM
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.2,
+                temperature=0.1,
             )
 
             return response.choices[0].message.content
 
         except Exception as e:
             logger.error(f"Error during retrieval from collection {collection_name}: {e}", exc_info=True)
-            # Check if the collection exists and provide a specific error message
             try:
                 self.qdrant_client.get_collection(collection_name=collection_name)
             except Exception:
                 return f"Error: Collection '{collection_name}' not found."
             return "An error occurred during retrieval."
-

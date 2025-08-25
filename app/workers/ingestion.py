@@ -23,6 +23,11 @@ def process_ingestion(file_path: str, job_id: str):
         os.makedirs(processed_dir, exist_ok=True)
         logger.info(f"Created processed directory: {processed_dir}")
 
+        # Create images folder
+        images_dir = os.path.join(processed_dir, "images")
+        os.makedirs(images_dir, exist_ok=True)
+        logger.info(f"Created images directory: {images_dir}")
+
         # Create dataframe from PDF
         df_ingestion = create_df_from_pdf(file_path, processed_dir)
 
@@ -34,7 +39,8 @@ def process_ingestion(file_path: str, job_id: str):
                 row['contents_dt'],
                 row['contents_md'],
                 row['image.bytes'],
-                row['extra.page_num']
+                row['extra.page_num'],
+                images_dir
             )
             updated_row['contents_dt'] = content_dt
             updated_row['contents_md'] = content_md
