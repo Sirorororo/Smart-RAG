@@ -18,8 +18,8 @@ This project is a retrieval-augmented generation (RAG) application that allows y
 
 1.  **Clone the repository (if you haven't already):**
     ```bash
-    git clone <your-repo-url>
-    cd <your-repo-directory>
+    git clone https://github.com/Sirorororo/Smart-RAG.git
+    cd Smart-RAG
     ```
 
 2.  **Create and activate a virtual environment using `uv`:**
@@ -33,12 +33,17 @@ This project is a retrieval-augmented generation (RAG) application that allows y
     uv pip install -r requirements.txt
     ```
 
-4.  **Set up your OpenAI API Key:**
+4.  **Set up your environment variables:**
     -   Create a file named `.env` in the root of the project directory.
-    -   Add your OpenAI API key to the `.env` file like this:
-        ```
-        OPENAI_API_KEY="your-openai-api-key-here"
-        ```
+    -   Check env.example for the required parameters
+
+5. **Set up qdrant if required**
+    ```bash
+    docker run -p 6333:6333 qdrant/qdrant
+    ```
+
+    Refer https://github.com/qdrant/qdrant for other installation methods.
+    
 
 ## Running the Application
 

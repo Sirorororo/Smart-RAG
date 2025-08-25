@@ -2,9 +2,6 @@ import logging
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    # Model configs
-    QWEN_VL_MODEL: str
-    QWEN_EMBED_MODEL: str
 
     # Chunking configs
     CHUNK_SIZE: int = 1200
@@ -12,7 +9,6 @@ class Settings(BaseSettings):
 
     # Qdrant configs
     QDRANT_URL: str
-    QDRANT_COLLECTION: str
 
     # Logging configs
     LOG_LEVEL: str = "INFO"
