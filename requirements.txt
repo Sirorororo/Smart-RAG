@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+pydantic-settings
+python-dotenv
+pymupdf
+camelot-py[cv]
+pandas
+docling
+torch
+torchvision
+torchaudio
+fastparquet
+openai
+ipywidgets
+langchain
+qdrant-client

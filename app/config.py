@@ -12,11 +12,13 @@ class Settings(BaseSettings):
 
     # Qdrant configs
     QDRANT_URL: str
-    QDRANT_COLLECTION: str = "pdf_ingestion"
+    QDRANT_COLLECTION: str
 
     # Logging configs
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+    OPENAI_API_KEY:str
 
     class Config:
         env_file = ".env"
