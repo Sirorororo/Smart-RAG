@@ -51,7 +51,7 @@ def get_ingestion_status(job_id):
         st.error(f"Error getting status: {e}")
         return None
 
-def retrieve_answer(query, collection__name):
+def retrieve_answer(query, collection_name):
     try:
         payload = {"query": query, "collection_name": collection_name}
         response = requests.post(f"{API_BASE_URL}/retrieve", json=payload)
@@ -134,21 +134,28 @@ if st.button("Get Answer", key="get_answer_button"):
                 with st.expander("Show Raw LLM Response"):
                     st.code(response_text)
                 
-                figure_matches = list(re.finditer(r'\[Fig: (.*?)\]', response_text))
+                # Look for both [Fig: ...] and [figure: ...] patterns
+                figure_matches = list(re.finditer(r'\[Fig: (.*?)\]', response_text, re.IGNORECASE))
+                figure_matches.extend(re.finditer(r'\[figure: (.*?)\]', response_text, re.IGNORECASE))
                 
                 if figure_matches:
                     job_details = get_job_details(collection_name)
                     if job_details:
                         kb_name = job_details.get('kb_name')
+                        displayed_figures = set() # Keep track of displayed figures
                         for match in figure_matches:
                             unique_id = match.group(1)
-                            image_path = os.path.join(STORAGE_PATH, kb_name, "processed", "images", f"{unique_id}.png")
-                            if os.path.exists(image_path):
-                                st.image(image_path, caption=f"Figure: {unique_id}")
-                            else:
-                                st.warning(f"Could not find image: {image_path}")
-                        # Clean the response text
-                        response_text = re.sub(r'\[figure: (.*?)\]', "", response_text).strip()
+                            if unique_id not in displayed_figures:
+                                image_path = os.path.join(STORAGE_PATH, kb_name, "processed", "images", f"{unique_id}.png")
+                                if os.path.exists(image_path):
+                                    st.image(image_path, caption=f"Figure: {unique_id}")
+                                else:
+                                    st.warning(f"Could not find image: {image_path}")
+                                displayed_figures.add(unique_id)
+
+                        # Clean the response text - remove both formats
+                        response_text = re.sub(r'\[Fig: (.*?)\]', "", response_text, flags=re.IGNORECASE)
+                        response_text = re.sub(r'\[figure: (.*?)\]', "", response_text, flags=re.IGNORECASE).strip()
 
                 st.markdown(response_text)
 

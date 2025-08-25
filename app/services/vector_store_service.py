@@ -16,7 +16,7 @@ class VectorStoreService:
             length_function=len,
         )
         self.openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.qdrant_client = QdrantClient(url=settings.QDRANT_URL)
+        self.qdrant_client = QdrantClient(url=settings.QDRANT_URL, timeout=60.0)
         self.collection_name = collection_name
         self._ensure_collection_exists()
 
@@ -76,9 +76,14 @@ class VectorStoreService:
                 )
         
         if chunk_points:
-            self.qdrant_client.upsert(
-                collection_name=self.collection_name,
-                points=chunk_points
-            )
+            batch_size = 100  # Adjust batch size as needed
+            for i in range(0, len(chunk_points), batch_size):
+                batch = chunk_points[i:i + batch_size]
+                self.qdrant_client.upsert(
+                    collection_name=self.collection_name,
+                    points=batch,
+                    wait=True # Wait for the upsert to complete
+                )
+                logger.info(f"Upserted batch {i//batch_size + 1}/{(len(chunk_points) - 1)//batch_size + 1}")
             
         logger.info(f"Successfully embedded and stored {len(chunk_points)} chunks in Qdrant.")
