@@ -8,7 +8,7 @@ This project is a retrieval-augmented generation (RAG) application that allows y
 -   **Figure Extraction**: Automatically extracts figures from documents, gets AI-generated descriptions, and saves them.
 -   **Q&A Interface**: Ask questions to your knowledge bases and get answers from an LLM.
 -   **Image Display**: Displays figures referenced in the LLM's response.
-- **Check out the example folder for sample responses expected.**
+- **Check out the examples folder for sample responses expected.**
 
 ## Prerequisites
 
