@@ -1,4 +1,4 @@
-# Smart Data Q&A
+# Smart-RAG
 
 This project is a retrieval-augmented generation (RAG) application that allows you to ask questions about your documents. It uses a FastAPI backend for data ingestion and retrieval, and a Streamlit frontend for a user-friendly interface.
 
