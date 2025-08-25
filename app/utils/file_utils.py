@@ -11,7 +11,7 @@ def save_temp_file(file: UploadFile, kb_name: str) -> str:
     """
 
     kb_dir = os.path.join(BASE_STORAGE, kb_name)
-    os.makedirs(BASE_STORAGE, exist_ok=True)
+    os.makedirs(kb_dir, exist_ok=True)
 
     # Generate unique filename
     unique_name = f"{uuid.uuid4()}_{file.filename}"
