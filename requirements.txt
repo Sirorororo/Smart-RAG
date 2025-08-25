@@ -16,3 +16,4 @@ langchain
 qdrant-client
 streamlit
 requests
+python-multipart

@@ -8,6 +8,7 @@ This project is a retrieval-augmented generation (RAG) application that allows y
 -   **Figure Extraction**: Automatically extracts figures from documents, gets AI-generated descriptions, and saves them.
 -   **Q&A Interface**: Ask questions to your knowledge bases and get answers from an LLM.
 -   **Image Display**: Displays figures referenced in the LLM's response.
+- **Check out the example folder for sample responses expected.**
 
 ## Prerequisites
 
@@ -79,3 +80,10 @@ This will open the Streamlit application in your web browser, usually at `http:/
     -   You can also see a list of existing knowledge bases in the sidebar and copy the `job_id` from there.
     -   Enter your question in the text area and click "Get Answer".
     -   The application will display the answer from the LLM. If the answer references any figures, they will be displayed below the text.
+
+## Notes:
+- If you run into symlinks error add these lines to main.py
+```
+import os
+os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
+```
